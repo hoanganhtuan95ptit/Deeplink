@@ -1,0 +1,11 @@
+plugins {
+    id 'java-library'
+    id 'kotlin'
+}
+
+apply from: "../dependencies.gradle"
+
+java {
+    sourceCompatibility = project.ext.javaVersion
+    targetCompatibility = project.ext.javaVersion
+}

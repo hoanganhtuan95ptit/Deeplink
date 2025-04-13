@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+    id 'kotlin-kapt'
+}
+
+apply from: "../dependencies.gradle"
+
+android {
+    namespace "com.tuanha.deeplink"
+
+    defaultConfig {
+        compileSdk project.ext.compileSdkVersion
+        minSdkVersion project.ext.minSdkVersion
+        targetSdkVersion project.ext.targetSdkVersion
+
+        multiDexEnabled = true
+    }
+    compileOptions {
+        sourceCompatibility project.ext.javaVersion
+        targetCompatibility project.ext.javaVersion
+    }
+    buildFeatures {
+        viewBinding true
+    }
+    kotlinOptions {
+        jvmTarget = project.ext.javaVersion.toString()
+    }
+    lintOptions {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation androidxDependencies.appcompat
+    implementation androidxDependencies.fragment
+    implementation androidxDependencies.lifecycle_common
+    implementation androidxDependencies.lifecycle_viewmodel
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.2"
+    implementation coroutinesDependencies.values()
+
+    api project(':deeplink-annotation')
+    kapt project(':deeplink-processor')
+
+    implementation 'androidx.startup:startup-runtime:1.2.0'
+}
