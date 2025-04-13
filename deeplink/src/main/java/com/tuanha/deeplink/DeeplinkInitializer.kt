@@ -5,6 +5,7 @@ import android.app.Application
 import android.app.Application.ActivityLifecycleCallbacks
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
@@ -23,6 +24,7 @@ class DeeplinkInitializer : Initializer<Unit> {
         val result = method.invoke(instance) as List<*>
         val handlers = result.filterIsInstance<DeeplinkQueueHandler>()
 
+        Log.d("tuanha", "create: ${handlers.map { it.javaClass.simpleName }}")
         (context as? Application)?.registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {

@@ -18,12 +18,14 @@ import javax.lang.model.element.TypeElement
 
 @AutoService(Processor::class)
 @SupportedSourceVersion(SourceVersion.RELEASE_17)
-class DeeplinkProcessor : AbstractProcessor() {
+class DeeplinkProviderProcessor : AbstractProcessor() {
+
+    private val annotationName = "com.tuanha.deeplink.annotation.Deeplink"
 
     private val classInfoList: MutableList<ClassInfo> = arrayListOf()
 
     override fun getSupportedAnnotationTypes(): Set<String> {
-        return setOf("com.tuanha.deeplink.annotation.Deeplink")
+        return setOf(annotationName)
     }
 
     override fun getSupportedSourceVersion(): SourceVersion {
@@ -37,7 +39,7 @@ class DeeplinkProcessor : AbstractProcessor() {
         }
 
         val elements = roundEnvironment.getElementsAnnotatedWith(
-            processingEnv.elementUtils.getTypeElement("com.tuanha.deeplink.annotation.Deeplink")
+            processingEnv.elementUtils.getTypeElement(annotationName)
         )
 
         for (element in elements) {
@@ -53,40 +55,53 @@ class DeeplinkProcessor : AbstractProcessor() {
             return true
         }
 
+
+        val packages = classInfoList.map { it.packageName }.toSet()
+
+        val packageName = packages.reduce { acc, pkg ->
+            acc.commonPrefixWith(pkg).substringBeforeLast('.')
+        }
+
+
         val kaptKotlinGeneratedDir = processingEnv.options["kapt.kotlin.generated"] ?: return false
 
 
         val list = ClassName("kotlin.collections", "MutableList")
-
         val navigationDeepLink = ClassName("com.tuanha.deeplink", "DeeplinkHandler")
         val listOfNavigationDeepLink = list.parameterizedBy(navigationDeepLink)
 
-        val allMethod = FunSpec.builder("all")
-            .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
+        val allMethod = FunSpec.builder("provider")
+            .addModifiers(KModifier.OVERRIDE, KModifier.PUBLIC)
             .returns(listOfNavigationDeepLink)
             .addStatement("val result = mutableListOf<%T>()", navigationDeepLink)
 
         classInfoList.forEach {
-
             allMethod.addStatement("result.add(%T())", ClassName(it.packageName, it.className))
         }
 
         allMethod.addStatement("return result")
 
-        val keepAnnotation = AnnotationSpec.builder(ClassName("androidx.annotation", "Keep"))
+
+        val deeplinkProviderClassName = ClassName("com.tuanha.deeplink.provider", "DeeplinkProvider")
+
+        val keepAnnotation = AnnotationSpec.builder(ClassName("androidx.annotation", "Keep")).build()
+
+        val autoServiceAnnotation = AnnotationSpec.builder(ClassName("com.google.auto.service", "AutoService"))
+            .addMember("%T::class", deeplinkProviderClassName)
             .build()
 
         val generatedClass = TypeSpec.objectBuilder("DeeplinkProvider")
             .addModifiers(KModifier.PUBLIC)
             .addAnnotation(keepAnnotation)
+            .addAnnotation(autoServiceAnnotation)
+            .addSuperinterface(deeplinkProviderClassName)
             .addFunction(allMethod.build())
             .build()
 
-        FileSpec.builder("com.tuanha.deeplink", "DeeplinkProvider")
+        FileSpec.builder(packageName, "DeeplinkProvider")
             .addType(generatedClass)
             .build()
             .writeTo(File(kaptKotlinGeneratedDir))
-
         return true
     }
 
