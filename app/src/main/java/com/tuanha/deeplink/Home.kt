@@ -1,13 +1,11 @@
-package com.tuanha.adapter
+package com.tuanha.deeplink
 
 import android.content.ComponentCallbacks
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.tuanha.app.R
-import com.tuanha.deeplink.DeeplinkHandler
 import com.tuanha.deeplink.annotation.Deeplink
 
 class HomeFragment : Fragment(R.layout.item_test2) {

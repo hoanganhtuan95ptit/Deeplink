@@ -29,7 +29,7 @@ class DeeplinkProviderProcessor : AbstractProcessor() {
 
     private val deeplinkHandlerClassName = ClassName("com.tuanha.deeplink", "DeeplinkHandler")
 
-    private val deeplinkProviderClassName = ClassName("com.tpb.deeplink.provider", "DeeplinkProvider")
+    private val deeplinkProviderClassName = ClassName("com.tuanha.deeplink.provider", "DeeplinkProvider")
 
 
     private val classInfoList: MutableList<ClassInfo> = arrayListOf()
