@@ -1,17 +1,19 @@
-package com.tuanha.deeplink
+package com
+
 
 import android.content.ComponentCallbacks
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.tuanha.app.R
+import com.tuanha.deeplink.DeeplinkHandler
 import com.tuanha.deeplink.annotation.Deeplink
 
 class HomeFragment : Fragment(R.layout.item_test2) {
 
 }
 
-@Deeplink
+@Deeplink(queue = "Confirm")
 class HomeDeeplink : DeeplinkHandler {
 
     override fun getDeeplink(): String = "app://home"

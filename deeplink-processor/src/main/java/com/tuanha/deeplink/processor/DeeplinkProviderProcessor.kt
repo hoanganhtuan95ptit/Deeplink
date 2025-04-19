@@ -64,9 +64,11 @@ class DeeplinkProviderProcessor : AbstractProcessor() {
             }?.let {
                 it.elementValues?.toList()?.firstOrNull()?.second?.value
             }?.let {
+                println(it)
                 "$it".formatAndRemoveWhitespace()
             }
 
+            println("queueName:$queueName")
             classInfoList.add(ClassInfo(queueName = queueName ?: "Deeplink", className = className, packageName = packageName))
         }
 
@@ -107,10 +109,11 @@ class DeeplinkProviderProcessor : AbstractProcessor() {
 
         val autoServiceAnnotation = createAutoServiceAnnotation(deeplinkQueueClassName)
 
+        val suffix = "Queue"
         val queueNames = classInfoList.map { it.queueName }.distinct()
 
         queueNames.forEach { queueName ->
-            val className = "${queueName}${deeplinkQueueClassName.simpleName}"
+            val className = "${queueName}$suffix"
             val classSpec = buildQueueClass(queueName, className, deeplinkQueueClassName, autoServiceAnnotation)
             FileSpec.builder(packageName, className)
                 .addType(classSpec)
@@ -119,7 +122,7 @@ class DeeplinkProviderProcessor : AbstractProcessor() {
         }
 
         writeMetaInf(
-            classNames = queueNames.map { "${it}${deeplinkQueueClassName.simpleName}" },
+            classNames = queueNames.map { "${it}$suffix" },
             packageName = packageName,
             interfaceClass = deeplinkQueueClassName,
             processingEnv = processingEnv
@@ -222,7 +225,7 @@ class DeeplinkProviderProcessor : AbstractProcessor() {
         val noSpaces = this.replace("\\s+".toRegex(), "")
 
         return if (noSpaces.isNotEmpty()) {
-            noSpaces.replaceFirstChar { it.uppercase() } + noSpaces.substring(1).lowercase()
+            noSpaces.substring(0, 1).uppercase() + noSpaces.substring(1).lowercase()
         } else {
             noSpaces
         }
