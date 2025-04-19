@@ -2,13 +2,12 @@
 
 package com.tuanha.deeplink
 
-import android.os.Bundle
 import android.view.View
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-fun sendDeeplink(deepLink: String, extras: Bundle? = null, sharedElement: Map<String, View>? = null) = CoroutineScope(Dispatchers.Main.immediate).launch {
+fun sendDeeplink(deepLink: String, extras: Map<String, Any>? = null, sharedElement: Map<String, View>? = null) = CoroutineScope(Dispatchers.Main.immediate).launch {
 
     if (!flow.replayCache.toMap().containsKey(deepLink)) {
 

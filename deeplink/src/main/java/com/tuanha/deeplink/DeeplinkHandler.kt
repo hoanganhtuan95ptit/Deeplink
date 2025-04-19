@@ -1,7 +1,6 @@
 package com.tuanha.deeplink
 
 import android.content.ComponentCallbacks
-import android.os.Bundle
 import android.view.View
 
 interface DeeplinkHandler {
@@ -10,6 +9,6 @@ interface DeeplinkHandler {
 
     suspend fun acceptDeeplink(deepLink: String): Boolean = deepLink == getDeeplink()
 
-    suspend fun navigation(componentCallbacks: ComponentCallbacks, deepLink: String, extras: Bundle?, sharedElement: Map<String, View>?): Boolean
+    suspend fun navigation(componentCallbacks: ComponentCallbacks, deepLink: String, extras: Map<String, Any>?, sharedElement: Map<String, View>?): Boolean
 }
 
