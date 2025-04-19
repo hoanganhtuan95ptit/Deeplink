@@ -10,7 +10,7 @@ import java.util.ServiceLoader
 
 internal val flow by lazy {
 
-    MutableSharedFlow<Pair<String, Pair<Map<String, Any>?, Map<String, View>?>>>(replay = 1, extraBufferCapacity = Int.MAX_VALUE, onBufferOverflow = BufferOverflow.SUSPEND)
+    MutableSharedFlow<Pair<String, Pair<Map<String, Any?>?, Map<String, View>?>>>(replay = 1, extraBufferCapacity = Int.MAX_VALUE, onBufferOverflow = BufferOverflow.SUSPEND)
 }
 
 internal val groupDeeplink: Map<String, List<DeeplinkHandler>> by lazy {

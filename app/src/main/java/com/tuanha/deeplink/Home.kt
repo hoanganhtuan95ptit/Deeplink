@@ -1,7 +1,6 @@
 package com.tuanha.deeplink
 
 import android.content.ComponentCallbacks
-import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -17,7 +16,7 @@ class HomeDeeplink : DeeplinkHandler {
 
     override fun getDeeplink(): String = "app://home"
 
-    override suspend fun navigation(componentCallbacks: ComponentCallbacks, deepLink: String, extras: Bundle?, sharedElement: Map<String, View>?): Boolean {
+    override suspend fun navigation(componentCallbacks: ComponentCallbacks, deepLink: String, extras: Map<String, Any?>?, sharedElement: Map<String, View>?): Boolean {
 
         if (componentCallbacks !is FragmentActivity) return false
 
