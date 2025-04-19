@@ -202,13 +202,14 @@ class DeeplinkProviderProcessor : AbstractProcessor() {
             .build()
     }
 
-    private fun writeMetaInf(classNames: List<String>, packageName: String, interfaceClass: ClassName, processingEnv: ProcessingEnvironment) {
+    private fun writeMetaInf(classNames: List<String>, packageName: String, interfaceClass: ClassName, processingEnv: ProcessingEnvironment) = kotlin.runCatching {
 
         val resource = processingEnv.filer.createResource(
             StandardLocation.CLASS_OUTPUT,
             "",
             "META-INF/services/${interfaceClass.canonicalName}"
         )
+
         resource.openWriter().use { writer ->
             classNames.forEach {
                 writer.write("$packageName.$it\n")
