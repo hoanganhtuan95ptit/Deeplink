@@ -2,24 +2,24 @@
 
 [![](https://jitpack.io/v/hoanganhtuan95ptit/Deeplink.svg)](https://jitpack.io/#hoanganhtuan95ptit/Deeplink)
 
-Thư viện xử lý deeplink cho Android, sử dụng **KSP** để tự động đăng ký handler tại compile-time — không cần khai báo thủ công, không reflection lúc runtime.
+An Android deeplink library that uses **KSP** to automatically register handlers at compile-time — no manual wiring, no runtime reflection.
 
 ---
 
-## Tính năng
+## Features
 
-- **Zero boilerplate** — chỉ cần thêm `@Deeplink`, mọi thứ còn lại tự động.
-- **Compile-time safe** — lỗi (sai interface, abstract class) bị bắt ngay lúc build, không phải lúc chạy app.
-- **Lifecycle-aware** — deeplink chỉ được xử lý khi Activity/Fragment đang ở foreground (`STARTED`), tự pause/resume theo lifecycle.
-- **Không mất deeplink** — buffer 20 intent, deeplink gửi trước khi UI sẵn sàng vẫn được xử lý sau.
-- **Thread-safe** — có thể gọi `sendDeeplink` từ bất kỳ thread nào.
-- **Hỗ trợ truyền dữ liệu** — gửi kèm `extras` và `sharedElement` cho transition animation.
+- **Zero boilerplate** — just add `@Deeplink`, everything else is automatic.
+- **Compile-time safe** — mistakes (wrong interface, abstract class) are caught at build time, not at runtime.
+- **Lifecycle-aware** — deeplinks are only processed when the Activity/Fragment is in the foreground (`STARTED`), and automatically pause/resume with the lifecycle.
+- **No lost deeplinks** — 20-item buffer ensures deeplinks sent before the UI is ready are still delivered.
+- **Thread-safe** — `sendDeeplink` can be called from any thread.
+- **Data passing** — send `extras` and `sharedElement` alongside the deeplink for transition animations.
 
 ---
 
-## Cài đặt
+## Installation
 
-### 1. Thêm JitPack vào `settings.gradle`
+### 1. Add JitPack to `settings.gradle`
 
 ```groovy
 dependencyResolutionManagement {
@@ -31,7 +31,7 @@ dependencyResolutionManagement {
 }
 ```
 
-### 2. Thêm KSP plugin vào `libs.versions.toml`
+### 2. Add the KSP plugin to `libs.versions.toml`
 
 ```toml
 [versions]
@@ -41,12 +41,12 @@ ksp = "2.0.21-1.0.25"
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 ```
 
-### 3. Thêm dependency vào module cần dùng
+### 3. Add dependencies to your module
 
 ```groovy
 plugins {
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.ksp)          // Bắt buộc
+    alias(libs.plugins.ksp)          // Required
 }
 
 dependencies {
@@ -55,19 +55,19 @@ dependencies {
 }
 ```
 
-> **Lưu ý:** `deeplink` và `deeplink-processor` phải dùng **cùng version**.
+> **Note:** `deeplink` and `deeplink-processor` must use the **same version**.
 
-### 4. Khởi tạo tự động (không cần làm gì thêm)
+### 4. Auto-initialization (nothing else needed)
 
-Thư viện dùng **AndroidX App Startup** — tự khởi tạo khi app start mà không cần gọi thủ công trong `Application.onCreate()`.
+The library uses **AndroidX App Startup** — it initializes automatically when the app starts without any manual call in `Application.onCreate()`.
 
 ---
 
-## Cách sử dụng
+## Usage
 
-### Bước 1 — Tạo handler
+### Step 1 — Create a handler
 
-Tạo một class implement `DeeplinkHandler` và annotate bằng `@Deeplink`:
+Create a class that implements `DeeplinkHandler` and annotate it with `@Deeplink`:
 
 ```kotlin
 @Deeplink
@@ -83,15 +83,15 @@ class BDeeplinkHandler : DeeplinkHandler {
         extras: Map<String, Any?>?,
         sharedElement: Map<String, View>?
     ): Boolean {
-        // TODO: mở màn hình B
+        // TODO: open screen B
         return true
     }
 }
 ```
 
-Chỉ vậy thôi. KSP sẽ tự động phát hiện class này khi build và đăng ký vào hệ thống.
+That's it. KSP will automatically detect this class at build time and register it into the system.
 
-### Bước 2 — Gửi deeplink
+### Step 2 — Send a deeplink
 
 ```kotlin
 class MainActivity : AppCompatActivity() {
@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         // ...
 
-        // Gửi deeplink — Activity/Fragment sẽ tự nhận khi sẵn sàng
+        // Send a deeplink — the Activity/Fragment will receive it when ready
         sendDeeplink("app://b")
     }
 }
@@ -110,19 +110,19 @@ class MainActivity : AppCompatActivity() {
 
 ## API
 
-### Gửi deeplink
+### Sending deeplinks
 
 ```kotlin
-// Chỉ URL
+// URL only
 sendDeeplink("app://home")
 
-// Kèm dữ liệu không encode được vào URL
+// With data that can't be encoded into the URL
 sendDeeplink(
     deepLink = "app://profile",
     extras = mapOf("user" to userObject, "fromTab" to "search")
 )
 
-// Kèm shared element cho transition animation
+// With shared elements for transition animation
 sendDeeplink(
     deepLink = "app://photo/123",
     extras = mapOf("photoId" to "123"),
@@ -132,26 +132,26 @@ sendDeeplink(
 
 ### DeeplinkHandler interface
 
-| Member | Mô tả |
-|--------|-------|
-| `val deeplink: String` | URL handler xử lý — `canHandle()` mặc định so sánh với property này (case-insensitive). |
-| `val queueName: String` | Tên queue để serialize deeplink. Mặc định `"default_queue"`. |
-| `fun canHandle(lifecycleOwner, deeplink): Boolean` | Kiểm tra có xử lý URL này không. Override để dùng pattern matching. |
-| `suspend fun navigate(lifecycleOwner, deeplink, extras, sharedElement): Boolean` | Thực hiện điều hướng. Trả về `true` nếu thành công. |
+| Member | Description |
+|--------|-------------|
+| `val deeplink: String` | The URL this handler processes. `canHandle()` compares against this by default (case-insensitive). |
+| `val queueName: String` | Queue name for serializing deeplinks. Defaults to `"default_queue"`. |
+| `fun canHandle(lifecycleOwner, deeplink): Boolean` | Returns `true` if this handler can process the given URL. Override for pattern matching. |
+| `suspend fun navigate(lifecycleOwner, deeplink, extras, sharedElement): Boolean` | Performs the navigation. Returns `true` on success. |
 
 ---
 
-## Ví dụ nâng cao
+## Advanced Usage
 
-### Dùng `deeplink` property (cách nhanh)
+### Using the `deeplink` property (shorthand)
 
-Khi handler chỉ xử lý đúng một URL, khai báo qua property thay vì override `canHandle`:
+When a handler only processes one specific URL, declare it via the property instead of overriding `canHandle`:
 
 ```kotlin
 @Deeplink
 class HomeDeeplinkHandler : DeeplinkHandler {
 
-    // Không cần override canHandle() — so sánh tự động
+    // No need to override canHandle() — comparison is automatic
     override val deeplink: String = "app://home"
 
     override suspend fun navigate(
@@ -160,15 +160,15 @@ class HomeDeeplinkHandler : DeeplinkHandler {
         extras: Map<String, Any?>?,
         sharedElement: Map<String, View>?
     ): Boolean {
-        // mở màn hình Home
+        // open Home screen
         return true
     }
 }
 ```
 
-### Pattern matching (nhiều URL)
+### Pattern matching (multiple URLs)
 
-Override `canHandle` để xử lý nhóm URL:
+Override `canHandle` to handle a group of URLs:
 
 ```kotlin
 @Deeplink
@@ -185,13 +185,13 @@ class ProductDeeplinkHandler : DeeplinkHandler {
         sharedElement: Map<String, View>?
     ): Boolean {
         val productId = Uri.parse(deeplink).lastPathSegment ?: return false
-        // mở màn hình Product với productId
+        // open Product screen with productId
         return true
     }
 }
 ```
 
-### Nhận `extras` và `sharedElement`
+### Receiving `extras` and `sharedElement`
 
 ```kotlin
 @Deeplink
@@ -209,29 +209,29 @@ class PhotoDeeplinkHandler : DeeplinkHandler {
         val photoView = sharedElement?.get("photo")
 
         if (lifecycleOwner is FragmentActivity) {
-            // mở PhotoFragment với shared element transition
+            // open PhotoFragment with shared element transition
         }
         return true
     }
 }
 ```
 
-### Queue riêng (tránh block deeplink khác)
+### Custom queue (avoid blocking other deeplinks)
 
-Mặc định tất cả deeplink dùng chung `"default_queue"` — xử lý tuần tự. Nếu handler của bạn mất nhiều thời gian (gọi API, v.v.), tạo queue riêng để không ảnh hưởng handler khác:
+By default, all deeplinks share `"default_queue"` and are processed sequentially. If your handler takes a long time (API calls, etc.), use a dedicated queue so it doesn't block other handlers:
 
 ```kotlin
 @Deeplink
 class PaymentDeeplinkHandler : DeeplinkHandler {
 
     override val deeplink: String = "app://payment"
-    override val queueName: String = "payment_queue"   // Queue riêng
+    override val queueName: String = "payment_queue"   // Dedicated queue
 
     override suspend fun navigate(...): Boolean {
-        // Gọi API kiểm tra auth — không block "default_queue"
+        // API call to check auth — does not block "default_queue"
         val isAuthenticated = authRepository.checkAuth()
         if (!isAuthenticated) return false
-        // mở màn hình Payment
+        // open Payment screen
         return true
     }
 }
@@ -239,32 +239,32 @@ class PaymentDeeplinkHandler : DeeplinkHandler {
 
 ---
 
-## Hoạt động bên trong
+## How It Works
 
 ```
 Build
-  └─ KSP scan @Deeplink handlers
-       └─ Validate (concrete class, implement DeeplinkHandler)
-            └─ Sinh ra HandlerRegisterImpl.kt
+  └─ KSP scans for @Deeplink handlers
+       └─ Validates each class (concrete, implements DeeplinkHandler)
+            └─ Generates HandlerRegisterImpl.kt
 
 App start
   └─ AndroidX Startup → DeeplinkInitializer
-       ├─ AutoRegisterManager đăng ký HandlerRegisterImpl
+       ├─ AutoRegisterManager registers HandlerRegisterImpl
        │    └─ DeeplinkResolver.register(AHandler(), BHandler(), ...)
        └─ Activity lifecycle callbacks
-            └─ mỗi Activity/Fragment onCreate → DeeplinkCoordinator.attach()
+            └─ each Activity/Fragment onCreate → DeeplinkCoordinator.attach()
 
 sendDeeplink("app://b")
-  └─ emit vào SharedFlow (buffer 20)
-       └─ LifecycleOwner STARTED collect
-            └─ DeeplinkResolver.resolve() → tìm handler canHandle = true
-                 └─ Mutex theo queueName → navigate()
-                      └─ success → intent.consume() (atomic, chỉ 1 lần)
+  └─ emit into SharedFlow (buffer 20)
+       └─ STARTED LifecycleOwner collects
+            └─ DeeplinkResolver.resolve() → finds handler where canHandle = true
+                 └─ Mutex per queueName → navigate()
+                      └─ success → intent.consume() (atomic, only once)
 ```
 
-### File được KSP sinh ra
+### Generated file
 
-Sau khi build, KSP tự động tạo file `HandlerRegisterImpl.kt` — **không chỉnh sửa file này**:
+After building, KSP automatically creates `HandlerRegisterImpl.kt` — **do not edit this file**:
 
 ```kotlin
 // Generated by DeeplinkProcessor. DO NOT EDIT.
@@ -279,32 +279,32 @@ class HandlerRegisterImpl : DeeplinkRegister {
 
 ---
 
-## Cấu trúc project
+## Project Structure
 
 ```
 Deeplink/
-├── app/                        # Demo app
-│   └── MainActivity.kt         # Ví dụ sử dụng
+├── app/                            # Demo app
+│   └── MainActivity.kt             # Usage example
 │
-├── deeplink/                   # Module thư viện chính
+├── deeplink/                       # Core library module
 │   └── src/main/java/com/simple/deeplink/
-│       ├── Deeplink.kt         # @Deeplink annotation + sendDeeplink() top-level functions
-│       ├── DeeplinkHandler.kt  # Interface handler
-│       ├── DeeplinkCoordinator.kt  # Điều phối intent + DeeplinkResolver + DeeplinkSyncProvider
-│       ├── DeeplinkInitializer.kt  # Auto-init qua AndroidX Startup
-│       └── DeeplinkRegister.kt     # Interface đánh dấu class đăng ký handler
+│       ├── Deeplink.kt             # @Deeplink annotation + sendDeeplink() top-level functions
+│       ├── DeeplinkHandler.kt      # Handler interface
+│       ├── DeeplinkCoordinator.kt  # Intent dispatcher + DeeplinkResolver + DeeplinkSyncProvider
+│       ├── DeeplinkInitializer.kt  # Auto-init via AndroidX Startup
+│       └── DeeplinkRegister.kt     # Interface marking handler registration classes
 │
-└── deeplink-processor/         # KSP processor — sinh code tại compile-time
+└── deeplink-processor/             # KSP processor — generates code at compile-time
     └── src/main/java/com/simple/deeplink/processor/
-        ├── DeeplinkProcessorProvider.kt  # Factory cho KSP
-        └── DeeplinkProcessor.kt          # Logic quét @Deeplink và sinh file
+        ├── DeeplinkProcessorProvider.kt  # KSP factory
+        └── DeeplinkProcessor.kt          # @Deeplink scanning and file generation logic
 ```
 
 ---
 
-## Yêu cầu
+## Requirements
 
-| | Phiên bản |
+| | Version |
 |--|--|
 | Android | minSdk 21+ |
 | Kotlin | 2.0.21 |
