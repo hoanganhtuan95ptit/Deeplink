@@ -1,4 +1,7 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+// Khai báo tất cả plugin dùng trong project, nhưng chưa apply vào module nào (apply false).
+// Mỗi module con tự apply plugin mà nó cần trong build.gradle riêng.
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
@@ -7,11 +10,42 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
+// Cấu hình áp dụng chung cho tất cả module con (app, deeplink, deeplink-processor, …).
 subprojects {
+    // group + version dùng làm Maven coordinates khi publish:
+    //   com.github.hoanganhtuan95ptit:<artifactId>:1.0.0
+    group = "com.github.hoanganhtuan95ptit"
+    version = "1.0.0"
+
+    // Ép toàn bộ module dùng cùng một phiên bản androidx.core để tránh conflict
+    // khi các thư viện phụ thuộc kéo các version khác nhau về.
     configurations.all {
         resolutionStrategy {
             force "androidx.core:core-ktx:1.15.0"
             force "androidx.core:core:1.15.0"
         }
     }
+}
+
+/**
+ * Task tiện lợi để publish tất cả module lên Maven Local (~/.m2) cùng một lúc.
+ *
+ * Chạy: ./gradlew publishLocal
+ *
+ * Sau khi chạy xong, dùng dependency trong project khác:
+ *   repositories { mavenLocal() }
+ *   implementation "com.github.hoanganhtuan95ptit:deeplink:1.0.0"
+ *   ksp "com.github.hoanganhtuan95ptit:deeplink-processor:1.0.0"
+ */
+tasks.register("publishLocal") {
+    group = "publishing"
+    description = "Publishes all modules to Maven Local (~/.m2) for local testing"
+
+    // Chỉ dependsOn những module đã apply plugin "maven-publish".
+    // Bỏ qua :app vì app không publish thư viện.
+    subprojects
+        .filter { it.plugins.hasPlugin("maven-publish") }
+        .forEach { subproject ->
+            dependsOn("${subproject.path}:publishToMavenLocal")
+        }
 }

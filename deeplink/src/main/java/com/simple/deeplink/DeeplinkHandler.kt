@@ -1,6 +1,8 @@
 package com.simple.deeplink
 
 import android.view.View
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
 
 /**
@@ -121,5 +123,35 @@ interface DeeplinkHandler {
         deeplink: String,
         extras: Map<String, Any?>? = null,
         sharedElement: Map<String, View>? = null,
-    ): Boolean
+    ): Boolean {
+
+        return if (lifecycleOwner is FragmentActivity) {
+            navigate(fragmentActivity = lifecycleOwner, deeplink, extras, sharedElement)
+        } else if (lifecycleOwner is Fragment) {
+            navigate(fragment = lifecycleOwner, deeplink, extras, sharedElement)
+        } else {
+            false
+        }
+    }
+
+    suspend fun navigate(
+        fragment: Fragment,
+        deeplink: String,
+        extras: Map<String, Any?>? = null,
+        sharedElement: Map<String, View>? = null,
+    ): Boolean {
+
+        return false
+    }
+
+
+    suspend fun navigate(
+        fragmentActivity: FragmentActivity,
+        deeplink: String,
+        extras: Map<String, Any?>? = null,
+        sharedElement: Map<String, View>? = null,
+    ): Boolean {
+
+        return false
+    }
 }
