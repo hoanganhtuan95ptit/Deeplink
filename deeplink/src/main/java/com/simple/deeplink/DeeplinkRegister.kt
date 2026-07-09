@@ -1,5 +1,7 @@
 package com.simple.deeplink
 
+import com.simple.auto.register.AutoKeep
+
 /**
  * Interface đánh dấu một class có khả năng đăng ký các Deeplink handler
  * vào [DeeplinkResolver].
@@ -21,7 +23,7 @@ package com.simple.deeplink
  * @see Deeplink
  * @see com.simple.deeplink.processor.DeeplinkProcessor
  */
-interface DeeplinkRegister {
+interface DeeplinkRegister : AutoKeep {
 
     /**
      * Đăng ký tất cả các Deeplink handler vào [DeeplinkResolver].
