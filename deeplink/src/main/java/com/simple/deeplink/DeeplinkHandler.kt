@@ -101,7 +101,6 @@ interface DeeplinkHandler {
      */
     fun canHandle(lifecycleOwner: LifecycleOwner, deeplink: String): Boolean {
         val result = this.deeplink.equals(deeplink, ignoreCase = true)
-        Log.v("DeeplinkHandler", "canHandle() → handler=${this::class.simpleName} deeplink=\"$deeplink\" registered=\"${this.deeplink}\" result=$result")
         return result
     }
 

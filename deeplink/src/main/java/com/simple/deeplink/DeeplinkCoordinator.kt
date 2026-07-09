@@ -186,42 +186,32 @@ object DeeplinkCoordinator {
     private fun processIntent(lifecycleOwner: LifecycleOwner, intent: DeeplinkIntent) {
         // Bước 1: Bỏ qua ngay nếu đã consumed — tránh xử lý thừa khi re-scan
         if (intent.isConsumed) {
-            Log.d(TAG, "processIntent() → intent đã consumed, bỏ qua. intent=$intent")
             return
         }
-        Log.d(TAG, "processIntent() → bắt đầu xử lý intent=$intent trên ${lifecycleOwner::class.simpleName}")
 
         // Bước 2: Tìm handler — nếu chưa có thì return;
         // attach() sẽ re-emit intent này khi handler tiếp theo được đăng ký
         val handler = DeeplinkResolver.resolve(lifecycleOwner, intent.deepLink)
         if (handler == null) {
-            Log.w(TAG, "processIntent() → chưa có handler cho url=\"${intent.deepLink}\" trên ${lifecycleOwner::class.simpleName} — chờ handler tiếp theo đăng ký")
             return
         }
-        Log.d(TAG, "processIntent() → tìm thấy handler=${handler::class.simpleName} queue=\"${handler.queueName}\"")
 
         // Bước 3: Lấy Mutex theo queueName để serialize deeplink cùng queue
         val executionBarrier = DeeplinkSyncProvider.getBarrier(handler.queueName)
 
         lifecycleOwner.lifecycleScope.launch {
-            Log.d(TAG, "processIntent() → chờ lock queue=\"${handler.queueName}\" cho intent=$intent")
             executionBarrier.withLock {
-                Log.d(TAG, "processIntent() → đã lấy được lock queue=\"${handler.queueName}\" cho intent=$intent")
 
                 // Bước 4 (Double-check): LifecycleOwner khác có thể đã consume
                 // trong khi chờ lock — kiểm tra lại trước khi navigate
                 if (intent.isConsumed) {
-                    Log.d(TAG, "processIntent() → intent đã được consume bởi LifecycleOwner khác — bỏ qua. intent=$intent")
                     return@withLock
                 }
 
                 // Bước 5: Thực hiện navigate
-                Log.d(TAG, "processIntent() → bắt đầu navigate handler=${handler::class.simpleName} url=\"${intent.deepLink}\"")
                 val success = handler.navigate(lifecycleOwner, intent.deepLink, intent.extras, intent.sharedElement)
-                Log.d(TAG, "processIntent() → navigate kết quả=$success handler=${handler::class.simpleName} url=\"${intent.deepLink}\"")
 
                 if (!success) {
-                    Log.w(TAG, "processIntent() → navigate THẤT BẠI, intent KHÔNG bị consume. handler=${handler::class.simpleName} url=\"${intent.deepLink}\"")
                     return@withLock
                 }
 
@@ -229,9 +219,7 @@ object DeeplinkCoordinator {
                 intent.extras = null
                 intent.sharedElement = null
                 val consumed = intent.consume()
-                Log.d(TAG, "processIntent() → intent consume=$consumed. intent=$intent")
             }
-            Log.d(TAG, "processIntent() → đã giải phóng lock queue=\"${handler.queueName}\"")
         }
     }
 
@@ -362,13 +350,7 @@ object DeeplinkResolver {
      * @return Handler phù hợp đầu tiên, hoặc `null` nếu không có.
      */
     fun resolve(lifecycleOwner: LifecycleOwner, url: String): DeeplinkHandler? {
-        Log.d(TAG, "resolve() → tìm handler cho url=\"$url\" trên ${lifecycleOwner::class.simpleName} (tổng ${handlers.size} handlers)")
         val result = handlers.find { it.canHandle(lifecycleOwner, url) }
-        if (result == null) {
-            Log.w(TAG, "resolve() → KHÔNG tìm thấy handler cho url=\"$url\". Danh sách handlers: ${handlers.map { it::class.simpleName }}")
-        } else {
-            Log.d(TAG, "resolve() → tìm thấy handler=${result::class.simpleName} cho url=\"$url\"")
-        }
         return result
     }
 }
