@@ -117,20 +117,16 @@ object DeeplinkCoordinator {
      * @param lifecycleOwner Activity hoặc Fragment sẽ nhận và xử lý deeplink.
      */
     fun attach(lifecycleOwner: LifecycleOwner) {
-        Log.d(TAG, "attach() → ${lifecycleOwner::class.simpleName}")
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Log.d(TAG, "attach() → ${lifecycleOwner::class.simpleName} bắt đầu collect (STARTED)")
                 merge(
                     _intentQueue,
                     // Mỗi khi có handler mới đăng ký → re-emit toàn bộ intent
                     // chưa consumed trong replay cache để thử resolve lại
                     DeeplinkResolver.handlerRegistered.transform { handler ->
-                        Log.d(TAG, "attach() → handler mới [${handler::class.simpleName}] đăng ký, re-scan ${_intentQueue.replayCache.size} intent trong replay cache")
                         _intentQueue.replayCache.forEach { emit(it) }
                     }
                 ).collect { intent ->
-                    Log.d(TAG, "attach() → ${lifecycleOwner::class.simpleName} nhận intent: $intent")
                     processIntent(lifecycleOwner, intent)
                 }
             }

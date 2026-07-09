@@ -127,16 +127,11 @@ interface DeeplinkHandler {
         sharedElement: Map<String, View>? = null,
     ): Boolean {
 
-        Log.d("DeeplinkHandler", "navigate() → dispatch handler=${this::class.simpleName} lifecycleOwner=${lifecycleOwner::class.simpleName} url=\"$deeplink\"")
-
         return if (lifecycleOwner is FragmentActivity) {
-            Log.d("DeeplinkHandler", "navigate() → dispatch đến navigate(fragmentActivity) handler=${this::class.simpleName}")
             navigate(fragmentActivity = lifecycleOwner, deeplink, extras, sharedElement)
         } else if (lifecycleOwner is Fragment) {
-            Log.d("DeeplinkHandler", "navigate() → dispatch đến navigate(fragment) handler=${this::class.simpleName}")
             navigate(fragment = lifecycleOwner, deeplink, extras, sharedElement)
         } else {
-            Log.e("DeeplinkHandler", "navigate() → LỖI: lifecycleOwner=${lifecycleOwner::class.simpleName} không phải FragmentActivity hay Fragment! Trả về false.")
             false
         }
     }
@@ -147,7 +142,6 @@ interface DeeplinkHandler {
         extras: Map<String, Any?>? = null,
         sharedElement: Map<String, View>? = null,
     ): Boolean {
-        Log.w("DeeplinkHandler", "navigate(fragment) → handler=${this::class.simpleName} CHƯA override navigate(fragment)! Trả về false. url=\"$deeplink\"")
         return false
     }
 
@@ -158,7 +152,6 @@ interface DeeplinkHandler {
         extras: Map<String, Any?>? = null,
         sharedElement: Map<String, View>? = null,
     ): Boolean {
-        Log.w("DeeplinkHandler", "navigate(fragmentActivity) → handler=${this::class.simpleName} CHƯA override navigate(fragmentActivity)! Trả về false. url=\"$deeplink\"")
         return false
     }
 }
