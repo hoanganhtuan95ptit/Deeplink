@@ -22,7 +22,11 @@ DeeplinkCoordinator điều phối và thực thi điều hướng cho từng UR
 
 ## Cài đặt
 
-### 1. Thêm dependency
+Thư viện có thể được sử dụng từ hai nguồn. Group ID sẽ **khác nhau** tuỳ theo nguồn.
+
+### Cách 1 — JitPack (bản release công khai)
+
+JitPack tự động ghép tên repository vào group, nên group ID sẽ là `com.github.hoanganhtuan95ptit.Deeplink`.
 
 ```groovy
 // settings.gradle
@@ -44,9 +48,54 @@ plugins {
 
 dependencies {
     implementation 'com.github.hoanganhtuan95ptit.Deeplink:deeplink:x.y.z'
-    ksp         'com.github.hoanganhtuan95ptit:Deeplink:deeplink-processor:x.y.z'
+    ksp          'com.github.hoanganhtuan95ptit.Deeplink:deeplink-processor:x.y.z'
 }
 ```
+
+---
+
+### Cách 2 — Maven Local (build nội bộ, dùng để dev/test)
+
+Khi publish bằng `./gradlew publishLocal`, group ID lấy trực tiếp từ `build.gradle` gốc là `com.github.hoanganhtuan95ptit` — **không** có hậu tố tên repository.
+
+**Bước 1 — Publish lên Maven Local** (chạy một lần trong project thư viện):
+
+```bash
+./gradlew publishLocal
+```
+
+**Bước 2 — `settings.gradle` của project tiêu thụ:**
+
+```groovy
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenLocal() // Phải đặt trước mavenCentral để ưu tiên bản local
+        mavenCentral()
+    }
+}
+```
+
+**Bước 3 — `build.gradle` (module):**
+
+```groovy
+plugins {
+    alias(libs.plugins.ksp)
+}
+
+dependencies {
+    implementation 'com.github.hoanganhtuan95ptit:deeplink:1.0.0'
+    ksp          'com.github.hoanganhtuan95ptit:deeplink-processor:1.0.0'
+}
+```
+
+> **Tóm tắt sự khác biệt về Group ID:**
+>
+> | Nguồn | Group ID |
+> |---|---|
+> | JitPack | `com.github.hoanganhtuan95ptit.Deeplink` |
+> | Maven Local | `com.github.hoanganhtuan95ptit` |
 
 ---
 

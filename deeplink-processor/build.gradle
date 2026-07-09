@@ -1,7 +1,7 @@
 plugins {
-    id 'java-library'                        // Module thuần Java/Kotlin, không phụ thuộc Android SDK
-    alias(libs.plugins.jetbrains.kotlin.jvm) // Kotlin JVM (không phải kotlin-android)
-    id 'maven-publish'                       // Cho phép publish artifact lên Maven repository
+    id 'java-library'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'maven-publish'
 }
 
 // Processor chạy trên JVM của máy build (không phải thiết bị Android),

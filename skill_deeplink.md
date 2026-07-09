@@ -16,9 +16,14 @@ When you are asked to implement a deeplink or navigation routing, understand thi
 ---
 
 ## 3. Installation
-If the project does not have the library installed, you must add these dependencies:
 
-**In `settings.gradle` (or project `build.gradle`):**
+The library can be consumed from two sources. **Always check which source the target project uses before writing dependency declarations.**
+
+### Option A — JitPack (remote, public release)
+
+> JitPack automatically appends the repository name to the group, so the group ID becomes `com.github.hoanganhtuan95ptit.Deeplink`.
+
+**In `settings.gradle`:**
 ```groovy
 dependencyResolutionManagement {
     repositories {
@@ -39,6 +44,45 @@ dependencies {
 }
 ```
 *(Always check for the correct `latest_version` if specified in the project).*
+
+---
+
+### Option B — Maven Local (local build, for development/testing)
+
+> When published via `./gradlew publishLocal`, the group ID is taken directly from `build.gradle` root: `com.github.hoanganhtuan95ptit` — **without** the repository name suffix.
+
+**Step 1 — Publish to Maven Local** (run once in the library project):
+```bash
+./gradlew publishLocal
+```
+
+**Step 2 — In `settings.gradle` of the consuming project:**
+```groovy
+dependencyResolutionManagement {
+    repositories {
+        mavenLocal() // Must come before mavenCentral/jitpack so local takes priority
+        mavenCentral()
+    }
+}
+```
+
+**Step 3 — In module `build.gradle`:**
+```groovy
+plugins {
+    alias(libs.plugins.ksp)
+}
+
+dependencies {
+    implementation 'com.github.hoanganhtuan95ptit:deeplink:1.0.0'
+    ksp 'com.github.hoanganhtuan95ptit:deeplink-processor:1.0.0'
+}
+```
+
+> **Key difference vs JitPack:**
+> | Source | Group ID |
+> |---|---|
+> | JitPack | `com.github.hoanganhtuan95ptit.Deeplink` |
+> | Maven Local | `com.github.hoanganhtuan95ptit` |
 
 ---
 

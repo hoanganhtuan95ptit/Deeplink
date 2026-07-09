@@ -8,6 +8,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,12 +31,17 @@ import java.util.concurrent.atomic.AtomicBoolean
  * ```
  * Caller
  *   └─ sendDeeplink(url)
- *        └─ tryEmit vào _intentQueue (SharedFlow, buffer 10+10)
- *             └─ mỗi LifecycleOwner đã attach sẽ collect (khi STARTED)
+ *        └─ tryEmit vào _intentQueue (SharedFlow, replay=10)
+ *             └─ mỗi LifecycleOwner đã attach collect merge(
+ *                  _intentQueue,
+ *                  DeeplinkResolver.handlerRegistered  ← emit khi handler mới đăng ký
+ *                    .transform { replayCache.forEach { emit(it) } }  ← re-scan
+ *                ) khi STARTED
  *                  └─ processIntent()
- *                       ├─ DeeplinkResolver.resolve() → tìm handler phù hợp
- *                       ├─ DeeplinkSyncProvider.getBarrier() → lấy Mutex theo queueName
- *                       └─ handler.navigate() → thực hiện điều hướng
+ *                       ├─ isConsumed? → bỏ qua
+ *                       ├─ DeeplinkResolver.resolve() → tìm handler
+ *                       ├─ DeeplinkSyncProvider.getBarrier() → Mutex theo queueName
+ *                       └─ handler.navigate() → điều hướng
  * ```
  *
  * ## Cách sử dụng
@@ -74,6 +82,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object DeeplinkCoordinator {
 
+    private const val TAG = "DeeplinkCoordinator"
+
     /**
      * Hàng đợi intent deeplink — trái tim của hệ thống.
      *
@@ -95,23 +105,32 @@ object DeeplinkCoordinator {
     /**
      * Gắn kết một [LifecycleOwner] (Activity hoặc Fragment) vào hệ thống Deeplink.
      *
-     * Kể từ khi [attach] được gọi, [lifecycleOwner] sẽ **tự động nhận và xử lý**
-     * deeplink khi lifecycle ≥ [Lifecycle.State.STARTED].
+     * Collect từ flow **merged** gồm hai nguồn:
+     * 1. `_intentQueue` — intent deeplink mới gửi đến.
+     * 2. `DeeplinkResolver.handlerRegistered` → re-scan toàn bộ `replayCache` —
+     *    đảm bảo intent gửi **trước** khi handler kịp đăng ký vẫn được xử lý
+     *    ngay khi handler tương ứng được nạp vào (kể cả handler đăng ký muộn).
      *
-     * ## Tại sao dùng repeatOnLifecycle(STARTED)?
-     * - **Tránh duplicate:** Khi Activity bị recreate, coroutine cũ tự cancel
-     *   và coroutine mới được tạo — không bao giờ có 2 collector cùng lúc.
-     * - **Tiết kiệm tài nguyên:** Coroutine tự pause khi Activity về background
-     *   (< STARTED) và resume khi lên foreground.
-     *
-     * Hàm này thường được gọi **tự động** bởi [DeeplinkInitializer].
+     * `isConsumed` check trong [processIntent] đảm bảo intent không bao giờ
+     * bị navigate hai lần dù bị re-emit nhiều lần.
      *
      * @param lifecycleOwner Activity hoặc Fragment sẽ nhận và xử lý deeplink.
      */
     fun attach(lifecycleOwner: LifecycleOwner) {
+        Log.d(TAG, "attach() → ${lifecycleOwner::class.simpleName}")
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                _intentQueue.collect { intent ->
+                Log.d(TAG, "attach() → ${lifecycleOwner::class.simpleName} bắt đầu collect (STARTED)")
+                merge(
+                    _intentQueue,
+                    // Mỗi khi có handler mới đăng ký → re-emit toàn bộ intent
+                    // chưa consumed trong replay cache để thử resolve lại
+                    DeeplinkResolver.handlerRegistered.transform { handler ->
+                        Log.d(TAG, "attach() → handler mới [${handler::class.simpleName}] đăng ký, re-scan ${_intentQueue.replayCache.size} intent trong replay cache")
+                        _intentQueue.replayCache.forEach { emit(it) }
+                    }
+                ).collect { intent ->
+                    Log.d(TAG, "attach() → ${lifecycleOwner::class.simpleName} nhận intent: $intent")
                     processIntent(lifecycleOwner, intent)
                 }
             }
@@ -135,10 +154,16 @@ object DeeplinkCoordinator {
         extras: Map<String, Any?>? = null,
         sharedElement: Map<String, View>? = null,
     ) {
+        Log.d(TAG, "sendDeeplink() → url=\"$deepLink\" extras=$extras sharedElement=${sharedElement?.keys}")
         // tryEmit() thành công vì buffer còn chỗ (replay=10 + extraCapacity=10).
         // Trong trường hợp cực hiếm buffer đầy, intent sẽ bị drop — chấp nhận được
         // vì tryEmit chỉ thất bại khi có 20+ deeplink chưa được xử lý đồng thời.
-        _intentQueue.tryEmit(DeeplinkIntent(deepLink, extras, sharedElement))
+        val emitted = _intentQueue.tryEmit(DeeplinkIntent(deepLink, extras, sharedElement))
+        if (!emitted) {
+            Log.e(TAG, "sendDeeplink() THẤT BẠI — buffer đầy, deeplink bị DROP: url=\"$deepLink\"")
+        } else {
+            Log.d(TAG, "sendDeeplink() → emit thành công vào queue: url=\"$deepLink\"")
+        }
     }
 
     // ─── Internal Processing ──────────────────────────────────────────────────
@@ -147,43 +172,66 @@ object DeeplinkCoordinator {
      * Xử lý một [DeeplinkIntent] trên một [LifecycleOwner] cụ thể.
      *
      * ## Luồng xử lý chi tiết
-     * 1. [DeeplinkResolver.resolve] — tìm handler có `canHandle() = true`
-     * 2. [DeeplinkSyncProvider.getBarrier] — lấy Mutex theo [DeeplinkResolver.DeeplinkHandler.queueName]
-     * 3. Acquire lock — serialize các deeplink cùng queue
-     * 4. Double-check `isConsumed` bên trong lock — tránh race condition giữa nhiều LifecycleOwner
-     * 5. [DeeplinkResolver.DeeplinkHandler.navigate] — thực hiện điều hướng thực sự
-     * 6. Giải phóng extras/sharedElement và consume intent nếu navigate thành công
+     * 1. Early-return nếu intent đã consumed (re-emit từ handler registration re-scan)
+     * 2. [DeeplinkResolver.resolve] — tìm handler có `canHandle() = true`
+     *    Nếu chưa có handler → return (sẽ được thử lại khi handler tiếp theo đăng ký)
+     * 3. [DeeplinkSyncProvider.getBarrier] — lấy Mutex theo queueName
+     * 4. Acquire lock + double-check `isConsumed` — chống race condition
+     * 5. [DeeplinkHandler.navigate] — thực hiện điều hướng
+     * 6. Consume intent nếu navigate thành công
      *
-     * ## Tại sao cần Mutex?
-     * Nhiều [LifecycleOwner] (Activity + Fragment) đồng thời collect [_intentQueue].
-     * Khi một intent mới đến, tất cả đều nhận được và cùng gọi [processIntent].
-     * Mutex đảm bảo chỉ một trong số đó thực sự navigate.
-     *
-     * @param lifecycleOwner LifecycleOwner đang active, sẽ thực hiện navigate nếu thắng lock.
-     * @param intent         Intent chứa thông tin deeplink cần xử lý.
+     * @param lifecycleOwner LifecycleOwner đang active.
+     * @param intent         Intent cần xử lý.
      */
     private fun processIntent(lifecycleOwner: LifecycleOwner, intent: DeeplinkIntent) {
-        // Bước 1: Tìm handler phù hợp — bỏ qua nếu không có handler nào xử lý được URL này
-        val handler = DeeplinkResolver.resolve(lifecycleOwner, intent.deepLink) ?: return
+        // Bước 1: Bỏ qua ngay nếu đã consumed — tránh xử lý thừa khi re-scan
+        if (intent.isConsumed) {
+            Log.d(TAG, "processIntent() → intent đã consumed, bỏ qua. intent=$intent")
+            return
+        }
+        Log.d(TAG, "processIntent() → bắt đầu xử lý intent=$intent trên ${lifecycleOwner::class.simpleName}")
 
-        // Bước 2: Lấy Mutex theo queueName để serialize deeplink cùng queue
+        // Bước 2: Tìm handler — nếu chưa có thì return;
+        // attach() sẽ re-emit intent này khi handler tiếp theo được đăng ký
+        val handler = DeeplinkResolver.resolve(lifecycleOwner, intent.deepLink)
+        if (handler == null) {
+            Log.w(TAG, "processIntent() → chưa có handler cho url=\"${intent.deepLink}\" trên ${lifecycleOwner::class.simpleName} — chờ handler tiếp theo đăng ký")
+            return
+        }
+        Log.d(TAG, "processIntent() → tìm thấy handler=${handler::class.simpleName} queue=\"${handler.queueName}\"")
+
+        // Bước 3: Lấy Mutex theo queueName để serialize deeplink cùng queue
         val executionBarrier = DeeplinkSyncProvider.getBarrier(handler.queueName)
 
         lifecycleOwner.lifecycleScope.launch {
+            Log.d(TAG, "processIntent() → chờ lock queue=\"${handler.queueName}\" cho intent=$intent")
             executionBarrier.withLock {
-                // Bước 3 (Double-check): Trong khi chờ lock, LifecycleOwner khác
-                // có thể đã consume intent này rồi — kiểm tra lại trước khi navigate
-                if (intent.isConsumed) return@withLock
+                Log.d(TAG, "processIntent() → đã lấy được lock queue=\"${handler.queueName}\" cho intent=$intent")
 
-                // Bước 4: Thực hiện navigate — suspend cho đến khi hoàn thành
+                // Bước 4 (Double-check): LifecycleOwner khác có thể đã consume
+                // trong khi chờ lock — kiểm tra lại trước khi navigate
+                if (intent.isConsumed) {
+                    Log.d(TAG, "processIntent() → intent đã được consume bởi LifecycleOwner khác — bỏ qua. intent=$intent")
+                    return@withLock
+                }
+
+                // Bước 5: Thực hiện navigate
+                Log.d(TAG, "processIntent() → bắt đầu navigate handler=${handler::class.simpleName} url=\"${intent.deepLink}\"")
                 val success = handler.navigate(lifecycleOwner, intent.deepLink, intent.extras, intent.sharedElement)
-                if (!success) return@withLock
+                Log.d(TAG, "processIntent() → navigate kết quả=$success handler=${handler::class.simpleName} url=\"${intent.deepLink}\"")
 
-                // Bước 5: Giải phóng tài nguyên và đánh dấu intent đã được xử lý
+                if (!success) {
+                    Log.w(TAG, "processIntent() → navigate THẤT BẠI, intent KHÔNG bị consume. handler=${handler::class.simpleName} url=\"${intent.deepLink}\"")
+                    return@withLock
+                }
+
+                // Bước 6: Giải phóng tài nguyên và đánh dấu đã xử lý
                 intent.extras = null
                 intent.sharedElement = null
-                intent.consume()
+                val consumed = intent.consume()
+                Log.d(TAG, "processIntent() → intent consume=$consumed. intent=$intent")
             }
+            Log.d(TAG, "processIntent() → đã giải phóng lock queue=\"${handler.queueName}\"")
         }
     }
 
@@ -269,35 +317,59 @@ object DeeplinkCoordinator {
  */
 object DeeplinkResolver {
 
+    private const val TAG = "DeeplinkResolver"
+
     /** Danh sách tất cả handler đã đăng ký, thread-safe. */
     private val handlers = CopyOnWriteArrayList<DeeplinkHandler>()
 
     /**
-     * Đăng ký một handler mới vào hệ thống.
+     * Emit mỗi khi một handler mới được đăng ký.
      *
-     * Thường được gọi tự động bởi `HandlerRegisterImpl.register()` (class do KSP sinh).
-     * Thứ tự gọi [register] quyết định độ ưu tiên: handler đăng ký trước được
-     * kiểm tra trước trong [resolve].
+     * [DeeplinkCoordinator.attach] combine flow này với `_intentQueue`:
+     * khi emit → re-scan toàn bộ replay cache → thử xử lý lại các intent
+     * chưa tìm được handler (kể cả handler đăng ký muộn vẫn được xử lý đúng).
+     *
+     * Buffer `DROP_OLDEST` + `extraBufferCapacity = 64` đảm bảo burst đăng ký
+     * (nhiều handler nạp liên tiếp) không bao giờ block.
+     */
+    private val _handlerRegistered = MutableSharedFlow<DeeplinkHandler>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Public read-only view của [_handlerRegistered]. */
+    val handlerRegistered: SharedFlow<DeeplinkHandler> = _handlerRegistered
+
+    /**
+     * Đăng ký một handler mới vào hệ thống và thông báo cho các collector.
+     *
+     * Thứ tự gọi [register] quyết định độ ưu tiên: handler đăng ký trước
+     * được kiểm tra trước trong [resolve].
      *
      * @param handler Handler cần đăng ký.
      */
     fun register(handler: DeeplinkHandler) {
+        Log.d(TAG, "register() → đăng ký handler=${handler::class.simpleName} deeplink=\"${handler.deeplink}\" queue=\"${handler.queueName}\" (tổng: ${handlers.size + 1})")
         handlers.add(handler)
+        _handlerRegistered.tryEmit(handler)
     }
 
     /**
      * Tìm handler đầu tiên có thể xử lý [url] trong ngữ cảnh [lifecycleOwner].
      *
-     * Duyệt tuần tự theo thứ tự đăng ký, trả về handler đầu tiên mà
-     * [DeeplinkHandler.canHandle] trả về `true`.
-     *
-     * @param lifecycleOwner LifecycleOwner hiện tại — truyền vào `canHandle` để handler
-     *   có thể lọc theo context nếu cần (ví dụ: chỉ xử lý khi đang ở Activity cụ thể).
+     * @param lifecycleOwner LifecycleOwner hiện tại.
      * @param url URL deeplink cần resolve.
-     * @return Handler phù hợp đầu tiên, hoặc `null` nếu không có handler nào xử lý được.
+     * @return Handler phù hợp đầu tiên, hoặc `null` nếu không có.
      */
     fun resolve(lifecycleOwner: LifecycleOwner, url: String): DeeplinkHandler? {
-        return handlers.find { it.canHandle(lifecycleOwner, url) }
+        Log.d(TAG, "resolve() → tìm handler cho url=\"$url\" trên ${lifecycleOwner::class.simpleName} (tổng ${handlers.size} handlers)")
+        val result = handlers.find { it.canHandle(lifecycleOwner, url) }
+        if (result == null) {
+            Log.w(TAG, "resolve() → KHÔNG tìm thấy handler cho url=\"$url\". Danh sách handlers: ${handlers.map { it::class.simpleName }}")
+        } else {
+            Log.d(TAG, "resolve() → tìm thấy handler=${result::class.simpleName} cho url=\"$url\"")
+        }
+        return result
     }
 }
 

@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -47,14 +48,20 @@ import kotlinx.coroutines.launch
  */
 class DeeplinkInitializer : Initializer<Unit> {
 
+    companion object {
+        private const val TAG = "DeeplinkInitializer"
+    }
+
     /**
      * Điểm khởi tạo được AndroidX Startup gọi một lần duy nhất khi app start.
      *
      * @param context Application context — dùng để đăng ký Activity lifecycle callback.
      */
     override fun create(context: Context) {
+        Log.d(TAG, "create() → DeeplinkInitializer bắt đầu khởi tạo")
         subscribeHandlerRegistrations()
         registerActivityLifecycleCallbacks(context)
+        Log.d(TAG, "create() → DeeplinkInitializer khởi tạo xong")
     }
 
     /**
@@ -78,9 +85,15 @@ class DeeplinkInitializer : Initializer<Unit> {
      * không block Main thread, đồng thời vẫn chạy trên đúng dispatcher.
      */
     private fun subscribeHandlerRegistrations() {
+        Log.d(TAG, "subscribeHandlerRegistrations() → bắt đầu subscribe AutoRegisterManager")
         CoroutineScope(Dispatchers.Main).launch {
             AutoRegisterManager.subscribe(DeeplinkRegister::class.java).collect { registers ->
+                Log.d(TAG, "subscribeHandlerRegistrations() → nhận được ${registers.size} DeeplinkRegister: ${registers.map { it::class.simpleName }}")
+                if (registers.isEmpty()) {
+                    Log.w(TAG, "subscribeHandlerRegistrations() → CẢNH BÁO: Không có DeeplinkRegister nào! KSP có thể chưa generate code.")
+                }
                 registers.forEach { register ->
+                    Log.d(TAG, "subscribeHandlerRegistrations() → gọi register.register() trên ${register::class.simpleName}")
                     register.register()
                 }
             }
@@ -101,13 +114,22 @@ class DeeplinkInitializer : Initializer<Unit> {
      * @param context Context để cast sang [Application] và gọi [Application.registerActivityLifecycleCallbacks].
      */
     private fun registerActivityLifecycleCallbacks(context: Context) {
-        val application = context as? Application ?: return
+        val application = context as? Application
+        if (application == null) {
+            Log.e(TAG, "registerActivityLifecycleCallbacks() → LỖI: context không phải Application! context=${context::class.simpleName}")
+            return
+        }
+        Log.d(TAG, "registerActivityLifecycleCallbacks() → đăng ký ActivityLifecycleCallbacks")
 
         application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                Log.d(TAG, "onActivityCreated() → activity=${activity::class.simpleName} savedInstanceState=${savedInstanceState != null}")
                 // Chỉ xử lý ComponentActivity — cần lifecycleScope và repeatOnLifecycle
-                if (activity !is ComponentActivity) return
+                if (activity !is ComponentActivity) {
+                    Log.w(TAG, "onActivityCreated() → bỏ qua ${activity::class.simpleName} vì không phải ComponentActivity")
+                    return
+                }
                 setupActivity(activity)
             }
 
@@ -132,16 +154,21 @@ class DeeplinkInitializer : Initializer<Unit> {
      * @param activity Activity vừa được tạo, đã đảm bảo là [ComponentActivity].
      */
     private fun setupActivity(activity: ComponentActivity) {
+        Log.d(TAG, "setupActivity() → setup deeplink cho activity=${activity::class.simpleName}")
         // Attach để Activity nhận deeplink khi đang ở foreground
         DeeplinkCoordinator.attach(activity)
 
         // Fragment cũng cần nhận deeplink độc lập với Activity
         if (activity is FragmentActivity) {
+            Log.d(TAG, "setupActivity() → ${activity::class.simpleName} là FragmentActivity, đăng ký Fragment lifecycle observer")
             activity.observeFragmentAttachments(object : FragmentManager.FragmentLifecycleCallbacks() {
                 override fun onFragmentAttached(fm: FragmentManager, fragment: Fragment, context: Context) {
+                    Log.d(TAG, "onFragmentAttached() → fragment=${fragment::class.simpleName} attach vào ${activity::class.simpleName}")
                     DeeplinkCoordinator.attach(fragment)
                 }
             })
+        } else {
+            Log.d(TAG, "setupActivity() → ${activity::class.simpleName} không phải FragmentActivity, bỏ qua Fragment observer")
         }
     }
 

@@ -1,8 +1,8 @@
 plugins {
-    alias(libs.plugins.android.library)  // Module này là Android library (AAR)
-    alias(libs.plugins.kotlin.android)   // Hỗ trợ Kotlin cho Android
-    alias(libs.plugins.ksp)              // KSP để chạy DeeplinkProcessor lúc compile
-    id 'maven-publish'                   // Cho phép publish artifact lên Maven repository
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'com.google.devtools.ksp'
+    id 'maven-publish'
 }
 
 android {

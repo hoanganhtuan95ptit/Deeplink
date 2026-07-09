@@ -1,6 +1,6 @@
 [versions]
 agp = "8.8.2"
-autoRegister = "1.1.6"
+autoRegister = "1.0.4.6"
 kotlin = "2.0.21"
 kotlinpoet = "1.15.3"
 ksp = "2.0.21-1.0.25"
@@ -20,8 +20,8 @@ navigationUiKtx = "2.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-auto-register = { module = "com.github.hoanganhtuan95ptit.AutoRegister:auto-register", version.ref = "autoRegister" }
-auto-register-processor = { module = "com.github.hoanganhtuan95ptit.AutoRegister:auto-register-processor", version.ref = "autoRegister" }
+auto-register = { module = "com.github.hoanganhtuan95ptit:auto-register", version.ref = "autoRegister" }
+auto-register-processor = { module = "com.github.hoanganhtuan95ptit:auto-register-processor", version.ref = "autoRegister" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

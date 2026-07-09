@@ -1,5 +1,6 @@
 package com.simple.deeplink
 
+import android.util.Log
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -99,7 +100,9 @@ interface DeeplinkHandler {
      * @return `true` nếu handler này có thể xử lý URL này.
      */
     fun canHandle(lifecycleOwner: LifecycleOwner, deeplink: String): Boolean {
-        return this.deeplink.equals(deeplink, ignoreCase = true)
+        val result = this.deeplink.equals(deeplink, ignoreCase = true)
+        Log.v("DeeplinkHandler", "canHandle() → handler=${this::class.simpleName} deeplink=\"$deeplink\" registered=\"${this.deeplink}\" result=$result")
+        return result
     }
 
     /**
@@ -125,11 +128,16 @@ interface DeeplinkHandler {
         sharedElement: Map<String, View>? = null,
     ): Boolean {
 
+        Log.d("DeeplinkHandler", "navigate() → dispatch handler=${this::class.simpleName} lifecycleOwner=${lifecycleOwner::class.simpleName} url=\"$deeplink\"")
+
         return if (lifecycleOwner is FragmentActivity) {
+            Log.d("DeeplinkHandler", "navigate() → dispatch đến navigate(fragmentActivity) handler=${this::class.simpleName}")
             navigate(fragmentActivity = lifecycleOwner, deeplink, extras, sharedElement)
         } else if (lifecycleOwner is Fragment) {
+            Log.d("DeeplinkHandler", "navigate() → dispatch đến navigate(fragment) handler=${this::class.simpleName}")
             navigate(fragment = lifecycleOwner, deeplink, extras, sharedElement)
         } else {
+            Log.e("DeeplinkHandler", "navigate() → LỖI: lifecycleOwner=${lifecycleOwner::class.simpleName} không phải FragmentActivity hay Fragment! Trả về false.")
             false
         }
     }
@@ -140,7 +148,7 @@ interface DeeplinkHandler {
         extras: Map<String, Any?>? = null,
         sharedElement: Map<String, View>? = null,
     ): Boolean {
-
+        Log.w("DeeplinkHandler", "navigate(fragment) → handler=${this::class.simpleName} CHƯA override navigate(fragment)! Trả về false. url=\"$deeplink\"")
         return false
     }
 
@@ -151,7 +159,7 @@ interface DeeplinkHandler {
         extras: Map<String, Any?>? = null,
         sharedElement: Map<String, View>? = null,
     ): Boolean {
-
+        Log.w("DeeplinkHandler", "navigate(fragmentActivity) → handler=${this::class.simpleName} CHƯA override navigate(fragmentActivity)! Trả về false. url=\"$deeplink\"")
         return false
     }
 }
