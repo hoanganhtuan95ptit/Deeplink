@@ -14,8 +14,8 @@ plugins {
 subprojects {
     // group + version dùng làm Maven coordinates khi publish:
     //   com.github.hoanganhtuan95ptit:<artifactId>:1.0.0
-    group = "com.github.hoanganhtuan95ptit"
-    version = "1.1.0"
+    group = "com.github.hoanganhtuan95ptit.Deeplink"
+    version = "1.2.1.10"
 
     // Ép toàn bộ module dùng cùng một phiên bản androidx.core để tránh conflict
     // khi các thư viện phụ thuộc kéo các version khác nhau về.
