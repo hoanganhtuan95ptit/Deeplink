@@ -32,6 +32,12 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
 // Dùng afterEvaluate vì Android component (components.release) chỉ sẵn sàng
 // sau khi toàn bộ cấu hình android {} được Gradle xử lý xong.
 afterEvaluate {
