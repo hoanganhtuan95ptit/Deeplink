@@ -20,8 +20,8 @@ navigationUiKtx = "2.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-auto-register = { group = "com.github.hoanganhtuan95ptit", name = "auto-register", version.ref = "autoRegister" }
-auto-register-processor = { group = "com.github.hoanganhtuan95ptit", name = "auto-register-processor", version.ref = "autoRegister" }
+auto-register = { group = "com.github.hoanganhtuan95ptit.AutoRegister", name = "auto-register", version.ref = "autoRegister" }
+auto-register-processor = { group = "com.github.hoanganhtuan95ptit.AutoRegister", name = "auto-register-processor", version.ref = "autoRegister" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
