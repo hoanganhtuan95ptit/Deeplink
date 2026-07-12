@@ -1,9 +1,9 @@
 [versions]
-agp = "8.8.2"
+agp = "9.2.1"
 autoRegister = "1.0.4.6"
-kotlin = "2.0.21"
+kotlin = "2.4.0"
 kotlinpoet = "1.15.3"
-ksp = "2.0.21-1.0.25"
+ksp = "2.3.9"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
