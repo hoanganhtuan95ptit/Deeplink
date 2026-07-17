@@ -1,5 +1,6 @@
 package com.simple.deeplink
 
+import android.app.Activity
 import android.util.Log
 import android.view.View
 import androidx.lifecycle.Lifecycle
@@ -118,7 +119,7 @@ object DeeplinkCoordinator {
      */
     fun attach(lifecycleOwner: LifecycleOwner) {
         lifecycleOwner.lifecycleScope.launch {
-            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 merge(
                     _intentQueue,
                     // Mỗi khi có handler mới đăng ký → re-emit toàn bộ intent
