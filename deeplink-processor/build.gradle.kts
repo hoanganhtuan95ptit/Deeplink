@@ -1,19 +1,20 @@
 plugins {
-    id 'java-library'
-    id 'org.jetbrains.kotlin.jvm'
-    id 'maven-publish'
+    id("java-library")
+    id("org.jetbrains.kotlin.jvm")
+    id("maven-publish")
 }
 
 // Processor chạy trên JVM của máy build (không phải thiết bị Android),
 // nên dùng Java 11 là đủ và tương thích rộng.
 java {
-    sourceCompatibility JavaVersion.VERSION_11
-    targetCompatibility JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 kotlin {
+    jvmToolchain(11)
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -26,8 +27,8 @@ publishing {
         // Publish JAR thuần (components.java) vì module này không có Android component.
         // Maven coordinates: com.github.hoanganhtuan95ptit:deeplink-processor:1.0.0
         // (group + version kế thừa từ subprojects {} trong root build.gradle)
-        maven(MavenPublication) {
-            from components.java
+        create<MavenPublication>("maven") {
+            from(components.findByName("java"))
             artifactId = "deeplink-processor"
         }
     }
