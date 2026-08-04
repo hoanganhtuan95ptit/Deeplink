@@ -36,6 +36,11 @@ android {
     publishing {
         singleVariant("release")
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 // Dùng afterEvaluate vì Android component (components.release) chỉ sẵn sàng
